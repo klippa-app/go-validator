@@ -1,6 +1,7 @@
 # `go-validator` A nice little validator for go
 *Based on the idea of [asaskevich/govalidator](https://github.com/asaskevich/govalidator) but with more checking data and with more extensive responses*  
 [![GoDoc](https://godoc.org/github.com/klippa-app/go-validator?status.svg)](https://godoc.org/github.com/klippa-app/go-validator)
+[![Go Report Card](https://goreportcard.com/badge/github.com/klippa-app/go-validator)](https://goreportcard.com/report/github.com/klippa-app/go-validator)
 
 ### Example
 ```go
@@ -73,7 +74,6 @@ output := checker.Check(updateUser{
 	NewPassword: "",
 	NewEmail: "",
 })
-
 ```
 
 #### Use json tag as error key
