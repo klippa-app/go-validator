@@ -102,10 +102,6 @@ func (c *Checker) Check(input interface{}) ErrorsMap {
 func (c *Checker) checkStruct(errors *ErrorsMap, path []string, input reflect.Value) {
 	inputType := input.Type()
 	for i := 0; i < input.NumField(); i++ {
-		if !input.Field(i).IsValid() {
-			return
-		}
-
 		copyOfInputType := reflect.New(inputType).Elem()
 		copyOfInputType.Set(input)
 
@@ -128,6 +124,12 @@ func (c *Checker) checkStruct(errors *ErrorsMap, path []string, input reflect.Va
 		}
 
 		path := append(path, name)
+
+		// Check if there is a validOptional
+		val, ok := fieldType.Tag.Lookup("optional")
+		if ok && strings.ToLower(val) == "true" && isZero(field) {
+			continue
+		}
 
 		// Check if the valid tag exsists and if so check the struct value
 		validTag, found := fieldType.Tag.Lookup("valid")
@@ -160,6 +162,9 @@ func (c *Checker) checkStruct(errors *ErrorsMap, path []string, input reflect.Va
 			}
 		}
 
+		if !input.Field(i).IsValid() {
+			continue
+		}
 		c.checkFieldType(errors, path, field)
 	}
 }
@@ -180,4 +185,25 @@ func (c *Checker) checkFieldType(errors *ErrorsMap, path []string, input reflect
 			c.checkFieldType(errors, append(path, strconv.Itoa(i)), sliceItem)
 		}
 	}
+}
+
+func isZero(v reflect.Value) bool {
+	switch v.Kind() {
+	case reflect.Ptr:
+		if v.IsNil() {
+			return true
+		}
+		return isZero(v.Elem())
+	case reflect.Func, reflect.Map, reflect.Slice, reflect.Struct:
+		return v.IsNil()
+	case reflect.Array:
+		z := true
+		for i := 0; i < v.Len(); i++ {
+			z = z && isZero(v.Index(i))
+		}
+		return z
+	}
+	// Compare other types directly:
+	z := reflect.Zero(v.Type())
+	return v.Interface() == z.Interface()
 }

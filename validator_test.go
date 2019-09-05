@@ -95,6 +95,32 @@ func TestCheckWithNestedData(t *testing.T) {
 	assert.Equal(t, validator.ErrorsMap{"data.Name": []error{validator.ErrValToShort}}, output)
 }
 
+type testTypeWithOptional struct {
+	Password string `valid:"password" optional:"true"`
+}
+
+func TestOptonal(t *testing.T) {
+	checker := validator.NewChecker()
+	checker.AddCheck("minLength", validator.Checks.Strings.MinLength)
+	checker.AddCheck("maxLength", validator.Checks.Strings.Maxlength)
+	checker.AddCheck("password", validator.Checks.Strings.Password)
+
+	output := checker.Check(&testTypeWithOptional{
+		Password: "",
+	})
+	assert.Equal(t, validator.ErrorsMap{}, output)
+
+	output = checker.Check(&testTypeWithOptional{
+		Password: "invalid",
+	})
+	assert.Equal(t, validator.ErrorsMap{"Password": []error{validator.ErrValToShort}}, output)
+
+	output = checker.Check(&testTypeWithOptional{
+		Password: "this is a valid password",
+	})
+	assert.Equal(t, validator.ErrorsMap{}, output)
+}
+
 func TestErrors(t *testing.T) {
 	checker := validator.NewChecker()
 	checker.AddCheck("password", validator.Checks.Strings.Password)

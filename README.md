@@ -59,6 +59,23 @@ output := checker.Check(Test{
 // output = map[List:[Value is not a valid slice]]
 ```
 
+#### Optional fields
+```go
+// ...
+type updateUser struct {
+	NewUsername string `valid:"username" optional:"true"`
+	NewPassword string `valid:"password" optional:"true"`
+	NewEmail    string `valid:"email" optional:"true"`
+}
+
+output := checker.Check(updateUser{
+	NewUsername: "abcd", // The checker will only check this field
+	NewPassword: "",
+	NewEmail: "",
+})
+
+```
+
 #### Use json tag as error key
 ```go
 checker := validator.NewChecker(validator.Options{
