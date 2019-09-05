@@ -1,5 +1,5 @@
 # `go-validator` A nice little validator for go
-*Based on the idea of [asaskevich/govalidator](https://github.com/asaskevich/govalidator) with more checking options*  
+*Based on the idea of [asaskevich/govalidator](https://github.com/asaskevich/govalidator) but with more checking data and with more extensive responses*  
 [![GoDoc](https://godoc.org/github.com/klippa-app/go-validator?status.svg)](https://godoc.org/github.com/klippa-app/go-validator)
 
 ### Example
@@ -76,3 +76,14 @@ output := checker.Check(userInput{
 // The output Password field now has "pass" as key
 // output = map[pass:[Value is to short]]
 ```
+
+### Q & A
+
+#### Can i use nested values?
+Yes you can use pointers, structs in structs and slices.  
+The responses will also change if you use this:  
+- Struct with Struct: `structField1.structField2`
+- Struct with Array with Structs: `structField.3.structField`
+
+#### Can i validate private fields?
+Yes you can
