@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"unsafe"
 )
 
 // Options are the options for running the ch
@@ -87,7 +88,15 @@ func (c *Checker) Check(input interface{}) ErrorsMap {
 func (c *Checker) checkStruct(errors *ErrorsMap, path []string, input reflect.Value) {
 	inputType := input.Type()
 	for i := 0; i < input.NumField(); i++ {
-		field := input.Field(i)
+		if !input.Field(i).IsValid() {
+			return
+		}
+
+		copyOfInputType := reflect.New(inputType).Elem()
+		copyOfInputType.Set(input)
+
+		field := copyOfInputType.Field(i)
+		field = reflect.NewAt(field.Type(), unsafe.Pointer(field.UnsafeAddr())).Elem()
 		fieldType := inputType.Field(i)
 
 		// Get the name prop
@@ -108,33 +117,32 @@ func (c *Checker) checkStruct(errors *ErrorsMap, path []string, input reflect.Va
 
 		// Check if the valid tag exsists and if so check the struct value
 		validTag, found := fieldType.Tag.Lookup("valid")
-		if !found {
-			continue
-		}
-		checksToRun := strings.Split(validTag, ",")
-		for _, check := range checksToRun {
-			check = strings.Trim(check, " ")
-			checkNameAndArgs := strings.Split(check, " ")
+		if found {
+			checksToRun := strings.Split(validTag, ",")
+			for _, check := range checksToRun {
+				check = strings.Trim(check, " ")
+				checkNameAndArgs := strings.Split(check, " ")
 
-			checkFunction, ok := c.DefinedChecks[checkNameAndArgs[0]]
-			if !ok || checkFunction == nil {
-				errors.addError(strings.Join(path, "."), ErrCheckNotDefined)
-				continue
-			}
+				checkFunction, ok := c.DefinedChecks[checkNameAndArgs[0]]
+				if !ok || checkFunction == nil {
+					errors.addError(strings.Join(path, "."), ErrCheckNotDefined)
+					continue
+				}
 
-			c := &Context{
-				CheckName: checkNameAndArgs[0],
-				FieldName: name,
-				FieldPath: strings.Join(path, "."),
-				Val:       field.Interface(),
-			}
-			if len(checkNameAndArgs) > 1 {
-				c.CheckArg = checkNameAndArgs[1]
-			}
+				c := &Context{
+					CheckName: checkNameAndArgs[0],
+					FieldName: name,
+					FieldPath: strings.Join(path, "."),
+					Val:       field.Interface(),
+				}
+				if len(checkNameAndArgs) > 1 {
+					c.CheckArg = checkNameAndArgs[1]
+				}
 
-			err := checkFunction(c)
-			if err != nil {
-				errors.addError(strings.Join(path, "."), err)
+				err := checkFunction(c)
+				if err != nil {
+					errors.addError(strings.Join(path, "."), err)
+				}
 			}
 		}
 
