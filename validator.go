@@ -64,6 +64,20 @@ func (c *Checker) AddCheck(name string, check Check) {
 // ErrorsMap is a map with errors for every field
 type ErrorsMap map[string][]error
 
+func (m ErrorsMap) Error() string {
+	lines := []string{}
+	for key, errors := range m {
+		newLine := key + ":"
+		for i, err := range errors {
+			if i > 0 {
+				newLine += ", "
+			}
+			newLine += err.Error()
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
 // addError adds an error to the error map
 func (m *ErrorsMap) addError(key string, err error) {
 	if err == nil {
