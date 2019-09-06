@@ -109,18 +109,9 @@ func (c *Checker) checkStruct(errors *ErrorsMap, path []string, input reflect.Va
 		field = reflect.NewAt(field.Type(), unsafe.Pointer(field.UnsafeAddr())).Elem()
 		fieldType := inputType.Field(i)
 
-		// Get the name prop
-		name := fieldType.Name
-		if c.JSONTag != nil {
-			if val, ok := fieldType.Tag.Lookup("json"); ok {
-				if val == "-" {
-					if c.JSONTag.IgnoreDashFields {
-						continue
-					}
-				} else {
-					name = strings.Split(val, ",")[0]
-				}
-			}
+		name := c.getFieldName(fieldType)
+		if name == "-" && c.JSONTag.IgnoreDashFields {
+			continue
 		}
 
 		path := append(path, name)
@@ -131,42 +122,63 @@ func (c *Checker) checkStruct(errors *ErrorsMap, path []string, input reflect.Va
 			continue
 		}
 
-		// Check if the valid tag exsists and if so check the struct value
-		validTag, found := fieldType.Tag.Lookup("valid")
-		if found {
-			checksToRun := strings.Split(validTag, ",")
-			for _, check := range checksToRun {
-				check = strings.Trim(check, " ")
-				checkNameAndArgs := strings.Split(check, " ")
-
-				checkFunction, ok := c.DefinedChecks[checkNameAndArgs[0]]
-				if !ok || checkFunction == nil {
-					errors.addError(strings.Join(path, "."), ErrCheckNotDefined)
-					continue
-				}
-
-				c := &Context{
-					CheckName: checkNameAndArgs[0],
-					FieldName: name,
-					FieldPath: strings.Join(path, "."),
-					Val:       field.Interface(),
-				}
-				if len(checkNameAndArgs) > 1 {
-					c.CheckArg = checkNameAndArgs[1]
-				}
-
-				err := checkFunction(c)
-				if err != nil {
-					errors.addError(strings.Join(path, "."), err)
-				}
-			}
-		}
+		c.check(errors, path, fieldType, field, name)
 
 		if !input.Field(i).IsValid() {
 			continue
 		}
 		c.checkFieldType(errors, path, field)
 	}
+}
+
+// check will check a struct field
+func (c *Checker) check(errors *ErrorsMap, path []string, fieldType reflect.StructField, field reflect.Value, name string) {
+	// Check if the valid tag exsists and if so check the struct value
+	validTag, found := fieldType.Tag.Lookup("valid")
+	if found {
+		checksToRun := strings.Split(validTag, ",")
+		for _, check := range checksToRun {
+			check = strings.Trim(check, " ")
+			checkNameAndArgs := strings.Split(check, " ")
+
+			checkFunction, ok := c.DefinedChecks[checkNameAndArgs[0]]
+			if !ok || checkFunction == nil {
+				errors.addError(strings.Join(path, "."), ErrCheckNotDefined)
+				continue
+			}
+
+			c := &Context{
+				CheckName: checkNameAndArgs[0],
+				FieldName: path[len(path)-1],
+				FieldPath: strings.Join(path, "."),
+				Val:       field.Interface(),
+			}
+			if len(checkNameAndArgs) > 1 {
+				c.CheckArg = checkNameAndArgs[1]
+			}
+
+			err := checkFunction(c)
+			if err != nil {
+				errors.addError(strings.Join(path, "."), err)
+			}
+		}
+	}
+}
+
+// getFieldName returns the name of the struct field or if the user has turned on json fields as name it will use that
+func (c *Checker) getFieldName(field reflect.StructField) string {
+	name := field.Name
+	if c.JSONTag != nil {
+		if val, ok := field.Tag.Lookup("json"); ok {
+			name = strings.Split(val, ",")[0]
+		}
+	}
+	if name == "-" {
+		if !c.JSONTag.IgnoreDashFields {
+			name = field.Name
+		}
+	}
+	return name
 }
 
 func (c *Checker) checkFieldType(errors *ErrorsMap, path []string, input reflect.Value) {
