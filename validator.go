@@ -74,6 +74,7 @@ func (m ErrorsMap) Error() string {
 			}
 			newLine += err.Error()
 		}
+		lines = append(lines, newLine)
 	}
 	return strings.Join(lines, "\n")
 }
